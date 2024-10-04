@@ -8,18 +8,15 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace Client
+namespace Client.Forms
 {
-    public partial class MainForm : Form
+    public partial class StreamingForm : Form
     {
-        public MainForm()
+        public static StreamingForm Instance;
+        public StreamingForm()
         {
+            Instance = this;
             InitializeComponent();
-        }
-
-        private void btn_connect_Click(object sender, EventArgs e)
-        {
-
         }
     }
 }
