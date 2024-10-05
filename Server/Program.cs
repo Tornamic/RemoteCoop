@@ -14,7 +14,7 @@ namespace Server
         {
             Network = new Network();
 
-            Network.Start(8191, 5);
+            Network.Start(8191);
         }
     }
 }

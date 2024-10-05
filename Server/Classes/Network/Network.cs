@@ -1,83 +1,57 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
 using System.Threading;
-using Riptide;
-using Riptide.Utils;
 
 namespace Server.Classes.Network
 {
     public class Network
     {
-        /// <summary>
-        /// Riptide server instance
-        /// </summary>
-        public Riptide.Server Server { get; protected set; }
-
-        /// <summary>
-        /// Used port
-        /// </summary>
+        private UdpClient udpServer;
+        private IPEndPoint clientEndPoint;
+        private bool isRunning;
+        private List<Client> Clients = new List<Client>();
         public ushort Port { get; private set; }
 
-        /// <summary>
-        /// Max client count
-        /// </summary>
-        public ushort MaxClientCount { get; private set; }
-
-        /// <summary>
-        /// Is running the server
-        /// </summary>
-        public bool IsRunning { get; private set; }
-
-        public Network() { }
-
-        /// <summary>
-        /// Start server
-        /// </summary>
-        /// <param name="port">Port</param>
-        /// <param name="maxClientCount">Max clients</param>
-        public void Start(ushort port, ushort maxClientCount)
+        public void Start(ushort port)
         {
             Port = port;
-            MaxClientCount = maxClientCount;
+
+            udpServer = new UdpClient(Port);
+            clientEndPoint = new IPEndPoint(IPAddress.Any, 0); // Accept messages from any client
+
             new Thread(Loop).Start();
         }
 
-        /// <summary>
-        /// Stop server
-        /// </summary>
-        public void Stop() 
+        public void Stop()
         {
-            IsRunning = false;
+            isRunning = false;
         }
 
-        /// <summary>
-        /// Network connection loop
-        /// </summary>
         private void Loop()
         {
-            RiptideLogger.Initialize(Console.WriteLine, includeTimestamps: true);
+            isRunning = true;
+            Console.WriteLine("Server started.");
 
-            Server = new Riptide.Server();
-            Server.Start(Port, MaxClientCount);
-
-            Server.ClientConnected += ClientConnected;
-            Server.ClientDisconnected += ClientDisconnected;
-
-            IsRunning = true;
-
-            while (IsRunning)
+            while (isRunning)
             {
-                Server.Update();
+                try
+                {
+                    var receivedData = udpServer.Receive(ref clientEndPoint);
+                    var message = Encoding.UTF8.GetString(receivedData);
+                    Console.WriteLine($"Received from client: {message}")
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error: {ex.Message}");
+                }
+
                 Thread.Sleep(10);
             }
 
-            Server.Stop();
-        }
-
-        private void ClientConnected(object sender, ServerConnectedEventArgs e)
-        {
-        }
-        private void ClientDisconnected(object sender, ServerDisconnectedEventArgs e)
-        {
+            udpServer.Close();
         }
     }
 }

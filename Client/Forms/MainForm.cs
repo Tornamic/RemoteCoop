@@ -29,5 +29,15 @@ namespace Client
             Program.Network.Connect(ip, port);
         }
 
+        public static void Log(string message, string timeFormat = "HH:mm:ss")
+        {
+            Instance.Invoke((MethodInvoker)delegate
+            {
+                Instance.tb_logs.Text += $"[{DateTime.Now.ToString(timeFormat)}] {message}" + Environment.NewLine;
+
+                Instance.tb_logs.SelectionStart = Instance.tb_logs.Text.Length;
+                Instance.tb_logs.ScrollToCaret();
+            });
+        }
     }
 }

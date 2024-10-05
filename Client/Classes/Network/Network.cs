@@ -1,95 +1,63 @@
-﻿using Client.Forms;
-using Riptide;
-using Riptide.Utils;
-using System;
+﻿using System;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
 using System.Threading;
-using System.Windows.Forms;
 
 namespace Client.Classes.Network
 {
     public class Network
     {
-        /// <summary>
-        /// Riptide client instance
-        /// </summary>
-        public Riptide.Client Client { get; protected set; }
-        
-        /// <summary>
-        /// Server IP Address
-        /// </summary>
-        public string IP { get; private set; }
+        private UdpClient udpClient;
+        private IPEndPoint serverEndPoint;
+        private bool isRunning;
 
-        /// <summary>
-        /// Server port
-        /// </summary>
+        public string IP { get; private set; }
         public ushort Port { get; private set; }
 
-        /// <summary>
-        /// Is running the client
-        /// </summary>
-        public bool IsRunning { get; private set; }
-
-        public Network() { }
-
-        /// <summary>
-        /// Connect to the server
-        /// </summary>
-        /// <param name="ip">Server IP Address</param>
-        /// <param name="port">Server port</param>
         public void Connect(string ip, ushort port)
         {
             IP = ip;
             Port = port;
+
+            udpClient = new UdpClient();
+            serverEndPoint = new IPEndPoint(IPAddress.Parse(ip), port);
+            udpClient.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
+
             new Thread(Loop).Start();
         }
 
-        /// <summary>
-        /// Disconnect from the server
-        /// </summary>
         public void Disconnect()
         {
-            IsRunning = false;
+            isRunning = false;
         }
 
         private void Loop()
         {
-            RiptideLogger.Initialize((log) => { MainForm.Instance.tb_logs.Text += log + '\n'; }, includeTimestamps: true);
-
-            Client = new Riptide.Client();
-            Client.Connect($"{IP}:{Port}");
-
-            Client.Connected += Connected;
-            Client.Disconnected += Disconnected;
-            Client.ClientConnected += ClientConnected;
-            Client.ClientDisconnected += ClientDisconnected;
-
-            IsRunning = true;
-
-            while (IsRunning)
+            isRunning = true;
+            MainForm.Log("Client Started");
+            while (isRunning)
             {
-                Client.Update();
+                try
+                {
+                    string messageToSend = Guid.NewGuid().ToString();
+                    udpClient.Send(Encoding.UTF8.GetBytes(messageToSend), messageToSend.Length, serverEndPoint);
+                    MainForm.Log($"Sent to server: {messageToSend}");
+
+                    var receivedData = udpClient.Receive(ref serverEndPoint);
+                    var message = Encoding.UTF8.GetString(receivedData);
+                    MainForm.Log($"Received from server: {message}");
+                }
+                catch (Exception ex)
+                {
+                    MainForm.Log($"Error: {ex.Message}");
+                    isRunning = false;
+                }
 
                 Thread.Sleep(10);
             }
 
-            Client.Disconnect();
-        }
-
-        private void Connected(object sender, EventArgs e)
-        {
-            MainForm.Instance.Invoke((MethodInvoker)delegate
-            {
-                new StreamingForm().Show();
-            });
-        }
-        private void Disconnected(object sender, DisconnectedEventArgs e)
-        {
-        }
-        private void ClientConnected(object sender, ClientConnectedEventArgs e)
-        {
-        }
-        private void ClientDisconnected(object sender, ClientDisconnectedEventArgs e)
-        {
+            udpClient.Close();
         }
     }
 }
